@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SSAS — Smart Student Assistance System (Prototype)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --primary:#2b5fa5; --primary-dark:#1e447c; --bg:#f4f6f9; --card:#ffffff;
+    --border:#e2e6ec; --text:#222; --muted:#6b7280; --green:#1e7a3c; --amber:#a5670e;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{background:var(--primary);color:white;padding:14px 22px;display:flex;justify-content:space-between;align-items:center;}
+  header h1{font-size:18px;margin:0;}
+  header span{font-size:12px;opacity:.85;}
+  .layout{display:flex;min-height:calc(100vh - 52px);}
+  nav{width:190px;background:var(--card);border-right:1px solid var(--border);padding:16px 0;}
+  nav button{display:block;width:100%;text-align:left;padding:11px 20px;border:none;background:none;font-size:14px;cursor:pointer;color:#333;}
+  nav button.active{background:#eaf1fb;color:var(--primary);font-weight:600;border-right:3px solid var(--primary);}
+  nav button:hover{background:#f2f4f7;}
+  main{flex:1;padding:22px;overflow-y:auto;}
+  .view{display:none;}
+  .view.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:18px;}
+  .card h2{margin-top:0;font-size:16px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;}
+  .badge{padding:3px 9px;border-radius:12px;font-size:11.5px;font-weight:600;}
+  .badge.pending{background:#fdf3e3;color:var(--amber);}
+  .badge.done{background:#e9f7ef;color:var(--green);}
+  .badge.exam{background:#fdeaea;color:#b5342a;}
+  form.inline{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  input,select,button.btn,textarea{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13.5px;font-family:inherit;}
+  button.btn{background:var(--primary);color:white;border:none;cursor:pointer;font-weight:600;}
+  button.btn:hover{background:var(--primary-dark);}
+  button.btn.secondary{background:white;color:var(--primary);border:1px solid var(--primary);}
+  .stat{font-size:26px;font-weight:700;}
+  .stat-label{font-size:12.5px;color:var(--muted);}
+  /* Chatbot */
+  #chatWindow{height:360px;overflow-y:auto;background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;}
+  .msg{max-width:75%;padding:9px 12px;border-radius:10px;margin-bottom:9px;font-size:13.5px;line-height:1.4;}
+  .msg.bot{background:#eaf1fb;color:#222;border-bottom-left-radius:2px;}
+  .msg.user{background:var(--primary);color:white;margin-left:auto;border-bottom-right-radius:2px;}
+  .chatInputRow{display:flex;gap:8px;}
+  .chatInputRow input{flex:1;}
+  .quickchip{display:inline-block;background:#eef2f7;border-radius:14px;padding:5px 11px;font-size:12px;margin:3px 4px 0 0;cursor:pointer;color:var(--primary-dark);}
+  .quickchip:hover{background:#dfe7f2;}
+  .resource-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13.5px;}
+  .muted{color:var(--muted);font-size:12.5px;}
+  .progress{background:#eee;border-radius:5px;height:10px;overflow:hidden;}
+  .progress > div{background:var(--primary);height:100%;}
+  .flexrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>SSAS &nbsp;|&nbsp; Smart Student Assistance System</h1>
+  <span>Prototype build &middot; First-Semester Student View</span>
+</header>
+
+<div class="layout">
+  <nav>
+    <button class="navbtn active" data-view="dashboard">Dashboard</button>
+    <button class="navbtn" data-view="schedule">Schedule Management</button>
+    <button class="navbtn" data-view="resources">Resource Management</button>
+    <button class="navbtn" data-view="chatbot">AI Assistant</button>
+    <button class="navbtn" data-view="performance">Performance Tracking</button>
+  </nav>
+
+  <main>
+    <!-- DASHBOARD -->
+    <div class="view active" id="dashboard">
+      <div class="grid3">
+        <div class="card"><div class="stat-label">Upcoming (7 days)</div><div class="stat" id="statUpcoming">-</div></div>
+        <div class="card"><div class="stat-label">Study Hours (week)</div><div class="stat" id="statHours">-</div></div>
+        <div class="card"><div class="stat-label">Assignments Done</div><div class="stat" id="statDone">-</div></div>
+      </div>
+      <div class="card">
+        <h2>Upcoming Deadlines</h2>
+        <table><thead><tr><th>Title</th><th>Course</th><th>Type</th><th>Date</th></tr></thead>
+        <tbody id="dashUpcomingBody"></tbody></table>
+      </div>
+      <div class="card">
+        <h2>Ask the AI Assistant</h2>
+        <div class="quickchip" onclick="goToChatWith('When is my next exam?')">When is my next exam?</div>
+        <div class="quickchip" onclick="goToChatWith('What assignments are due this week?')">Assignments due this week?</div>
+        <div class="quickchip" onclick="goToChatWith('I have 2 free hours today, suggest a study plan')">Suggest a study plan (2 hrs free)</div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE -->
+    <div class="view" id="schedule">
+      <div class="card">
+        <h2>Add Class / Assignment / Exam</h2>
+        <form class="inline" id="scheduleForm">
+          <input type="text" id="schTitle" placeholder="Title" required>
+          <input type="text" id="schCourse" placeholder="Course (e.g. DBMS)" required>
+          <select id="schType">
+            <option value="class">Class</option>
+            <option value="assignment">Assignment</option>
+            <option value="exam">Exam</option>
+          </select>
+          <input type="date" id="schDate" required>
+          <button class="btn" type="submit">+ Add</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>All Schedule Items</h2>
+        <table>
+          <thead><tr><th>Title</th><th>Course</th><th>Type</th><th>Date</th><th>Status</th><th></th></tr></thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RESOURCES -->
+    <div class="view" id="resources">
+      <div class="card">
+        <h2>Upload Study Resource</h2>
+        <form class="inline" id="resourceForm">
+          <input type="text" id="resCourse" placeholder="Course (e.g. AI)" required>
+          <input type="text" id="resName" placeholder="File name (e.g. Lecture4-Notes.pdf)" required>
+          <button class="btn" type="submit">+ Upload</button>
+        </form>
+        <p class="muted">Prototype note: actual binary upload is simulated — file metadata is stored and listed below (a production build streams the file to cloud storage, see Deployment Plan).</p>
+      </div>
+      <div class="card">
+        <h2>Study Resource Library</h2>
+        <div id="resourceList"></div>
+      </div>
+    </div>
+
+    <!-- CHATBOT -->
+    <div class="view" id="chatbot">
+      <div class="card">
+        <h2>AI Assistant</h2>
+        <p class="muted">Try: "When is my next exam?", "What's due this week?", "I have 3 free hours, suggest a study plan", "Log 1.5 hours of study for DBMS"</p>
+        <div id="chatWindow"></div>
+        <div class="chatInputRow">
+          <input type="text" id="chatInput" placeholder="Type your question...">
+          <button class="btn" id="chatSendBtn">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERFORMANCE -->
+    <div class="view" id="performance">
+      <div class="card">
+        <h2>Log Study Session</h2>
+        <form class="inline" id="logForm">
+          <input type="text" id="logCourse" placeholder="Course">
+          <input type="number" id="logHours" placeholder="Hours studied" min="0.25" step="0.25" required>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="logCompleted"> Marked an assignment complete</label>
+          <button class="btn" type="submit">+ Log</button>
+        </form>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h2>Weekly Study Hours</h2>
+          <canvas id="hoursChart" height="180"></canvas>
+        </div>
+        <div class="card">
+          <h2>Course-wise Progress</h2>
+          <div id="courseProgress"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ---------------- In-memory data store (prototype) ---------------- */
+const today = new Date();
+function isoDate(d){ return d.toISOString().slice(0,10); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+
+let schedule = [
+  {id:1, title:"DBMS Assignment 2", course:"DBMS", type:"assignment", date:isoDate(addDays(today,2)), status:"pending"},
+  {id:2, title:"OS Quiz 1", course:"OS", type:"exam", date:isoDate(addDays(today,4)), status:"pending"},
+  {id:3, title:"Calculus Lecture", course:"Math", type:"class", date:isoDate(addDays(today,0)), status:"ongoing"},
+  {id:4, title:"AI Term Paper", course:"AI", type:"assignment", date:isoDate(addDays(today,9)), status:"pending"},
+  {id:5, title:"Networks Midterm", course:"CN", type:"exam", date:isoDate(addDays(today,11)), status:"pending"},
+];
+let resources = [
+  {id:1, course:"DBMS", name:"Lecture 5 - Normalization Notes.pdf", date:isoDate(today)},
+  {id:2, course:"AI", name:"Assignment 2 Guidelines.docx", date:isoDate(today)},
+];
+let studyLogs = [
+  {day:"Mon", hours:1.2}, {day:"Tue", hours:2.0}, {day:"Wed", hours:0.8},
+  {day:"Thu", hours:2.6}, {day:"Fri", hours:1.6}, {day:"Sat", hours:0.4}, {day:"Sun", hours:1.0}
+];
+let courseProgress = {DBMS:0.7, OS:0.5, AI:0.85, Math:0.4};
+let idCounter = 6;
+
+/* ---------------- Navigation ---------------- */
+document.querySelectorAll('.navbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.view).classList.add('active');
+    if(btn.dataset.view==='performance') renderChart();
+  });
+});
+function goToChatWith(text){
+  document.querySelector('.navbtn[data-view="chatbot"]').click();
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+
+/* ---------------- Schedule Management ---------------- */
+function renderSchedule(){
+  schedule.sort((a,b)=> a.date.localeCompare(b.date));
+  const body = document.getElementById('scheduleBody');
+  body.innerHTML = schedule.map(s=>`
+    <tr>
+      <td>${s.title}</td><td>${s.course}</td>
+      <td style="text-transform:capitalize">${s.type}</td>
+      <td>${s.date}</td>
+      <td><span class="badge ${s.type==='exam'?'exam':(s.status==='done'?'done':'pending')}">${s.status}</span></td>
+      <td>${s.status!=='done' ? `<button class="btn secondary" onclick="markDone(${s.id})" style="padding:4px 8px;font-size:11.5px;">Mark done</button>` : ''}</td>
+    </tr>`).join('');
+  renderDashboard();
+}
+function markDone(id){
+  const item = schedule.find(s=>s.id===id);
+  if(item) item.status = 'done';
+  renderSchedule();
+}
+document.getElementById('scheduleForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  schedule.push({
+    id: idCounter++,
+    title: document.getElementById('schTitle').value,
+    course: document.getElementById('schCourse').value,
+    type: document.getElementById('schType').value,
+    date: document.getElementById('schDate').value,
+    status: 'pending'
+  });
+  e.target.reset();
+  renderSchedule();
+});
+
+/* ---------------- Resource Management ---------------- */
+function renderResources(){
+  const list = document.getElementById('resourceList');
+  list.innerHTML = resources.map(r=>`
+    <div class="resource-item">
+      <div><strong>${r.name}</strong> <span class="muted">&middot; ${r.course}</span></div>
+      <div class="muted">${r.date}</div>
+    </div>`).join('') || '<p class="muted">No resources uploaded yet.</p>';
+}
+document.getElementById('resourceForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  resources.unshift({
+    id: idCounter++,
+    course: document.getElementById('resCourse').value,
+    name: document.getElementById('resName').value,
+    date: isoDate(today)
+  });
+  e.target.reset();
+  renderResources();
+});
+
+/* ---------------- Performance Tracking ---------------- */
+let chartObj = null;
+function renderChart(){
+  const ctx = document.getElementById('hoursChart');
+  const data = { labels: studyLogs.map(l=>l.day), datasets:[{label:'Hours studied', data: studyLogs.map(l=>l.hours), backgroundColor:'#2b5fa5', borderRadius:4}]};
+  if(chartObj) chartObj.destroy();
+  chartObj = new Chart(ctx, { type:'bar', data, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}} });
+}
+function renderCourseProgress(){
+  const el = document.getElementById('courseProgress');
+  el.innerHTML = Object.entries(courseProgress).map(([c,p])=>`
+    <div class="flexrow"><span>${c}</span><span class="muted">${Math.round(p*100)}%</span></div>
+    <div class="progress" style="margin-bottom:12px;"><div style="width:${p*100}%"></div></div>
+  `).join('');
+}
+document.getElementById('logForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const hrs = parseFloat(document.getElementById('logHours').value)||0;
+  const course = document.getElementById('logCourse').value || 'General';
+  const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+  let todayEntry = studyLogs.find(l=>l.day===dayName);
+  if(todayEntry) todayEntry.hours += hrs; else studyLogs.push({day:dayName, hours:hrs});
+  if(courseProgress[course]!=null){
+    courseProgress[course] = Math.min(1, courseProgress[course] + (document.getElementById('logCompleted').checked?0.1:0.02));
+  } else {
+    courseProgress[course] = 0.2;
+  }
+  e.target.reset();
+  renderChart(); renderCourseProgress(); renderDashboard();
+});
+
+/* ---------------- Dashboard ---------------- */
+function renderDashboard(){
+  const upcoming = schedule.filter(s=>{
+    const d = new Date(s.date); const diff = (d-today)/(1000*3600*24);
+    return diff>=0 && diff<=7 && s.status!=='done';
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('statUpcoming').textContent = upcoming.length;
+  document.getElementById('statHours').textContent = studyLogs.reduce((a,b)=>a+b.hours,0).toFixed(1)+'h';
+  document.getElementById('statDone').textContent = schedule.filter(s=>s.status==='done').length + '/' + schedule.length;
+  document.getElementById('dashUpcomingBody').innerHTML = upcoming.map(s=>`
+    <tr><td>${s.title}</td><td>${s.course}</td><td style="text-transform:capitalize">${s.type}</td><td>${s.date}</td></tr>
+  `).join('') || '<tr><td colspan="4" class="muted">Nothing due in the next 7 days.</td></tr>';
+}
+
+/* ---------------- AI Chatbot (rule-based NLU prototype) ---------------- */
+const chatWindow = document.getElementById('chatWindow');
+function addMsg(text, who){
+  const div = document.createElement('div');
+  div.className = 'msg ' + who;
+  div.textContent = text;
+  chatWindow.appendChild(div);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+function nextExam(){
+  const exams = schedule.filter(s=>s.type==='exam' && s.status!=='done').sort((a,b)=>a.date.localeCompare(b.date));
+  return exams[0];
+}
+function dueThisWeek(){
+  return schedule.filter(s=>{
+    const d = new Date(s.date); const diff = (d-today)/(1000*3600*24);
+    return diff>=0 && diff<=7 && s.status!=='done';
+  });
+}
+function botReply(msgRaw){
+  const msg = msgRaw.toLowerCase();
+
+  // Intent: log study hours, e.g. "log 1.5 hours of study for DBMS"
+  const logMatch = msg.match(/log\s+([\d.]+)\s*hours?.*?(?:for|of)\s+([a-z0-9]+)/i);
+  if(logMatch){
+    const hrs = parseFloat(logMatch[1]); const course = logMatch[2].toUpperCase();
+    const dayName = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+    let e = studyLogs.find(l=>l.day===dayName);
+    if(e) e.hours += hrs; else studyLogs.push({day:dayName, hours:hrs});
+    courseProgress[course] = Math.min(1, (courseProgress[course]||0.2) + 0.05);
+    renderChart(); renderCourseProgress(); renderDashboard();
+    return `Logged ${hrs}h of study for ${course}. Your weekly total is now ${studyLogs.reduce((a,b)=>a+b.hours,0).toFixed(1)}h.`;
+  }
+
+  // Intent: next exam
+  if(msg.includes('exam')){
+    const ex = nextExam();
+    return ex ? `Your next exam is ${ex.title} (${ex.course}) on ${ex.date}.` : `You have no exams scheduled right now.`;
+  }
+
+  // Intent: due this week / deadlines
+  if(msg.includes('due') || msg.includes('deadline') || msg.includes('assignment')){
+    const items = dueThisWeek().filter(s=>s.type!=='class');
+    if(items.length===0) return `Nothing is due in the next 7 days. You're all caught up!`;
+    return `Due this week: ` + items.map(i=>`${i.title} (${i.course}) on ${i.date}`).join('; ') + '.';
+  }
+
+  // Intent: study plan suggestion based on free hours
+  const hourMatch = msg.match(/(\d+(\.\d+)?)\s*(free\s*)?hours?/);
+  if((msg.includes('study plan') || msg.includes('suggest') || msg.includes('free hour')) && hourMatch){
+    const freeHours = parseFloat(hourMatch[1]);
+    const pending = schedule.filter(s=>s.status!=='done' && s.type!=='class')
+      .sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+    if(pending.length===0) return `You have ${freeHours}h free and no pending tasks — great time to get ahead on next week's readings.`;
+    const share = (freeHours / pending.length).toFixed(1);
+    return `With ${freeHours}h free, try: ` + pending.map(p=>`${share}h on ${p.course} (${p.title})`).join(', ') + `. Want me to set reminders?`;
+  }
+  if(msg.includes('study plan') || msg.includes('suggest')){
+    return `Sure — how many free hours do you have today? e.g. "I have 3 free hours, suggest a study plan".`;
+  }
+
+  // Intent: reminders
+  if(msg.includes('remind')){
+    return `Reminders are set 1 hour before each class and 24 hours before each assignment/exam deadline. You can adjust this in Settings (not shown in this prototype).`;
+  }
+
+  // Greeting
+  if(msg.includes('hi') || msg.includes('hello') || msg.includes('hey')){
+    return `Hi! I can tell you about exams, deadlines, and help plan your study time. What would you like to know?`;
+  }
+
+  return `I'm a prototype assistant — I currently understand questions about exams, deadlines/assignments, study-plan suggestions (mention your free hours), logging study hours, and reminders. Try asking one of those!`;
+}
+function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  addMsg(text, 'user');
+  input.value = '';
+  setTimeout(()=> addMsg(botReply(text), 'bot'), 300);
+}
+document.getElementById('chatSendBtn').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+
+/* ---------------- Init ---------------- */
+addMsg("Hi! I'm your SSAS assistant. Ask me about exams, deadlines, or say how many free hours you have for a study plan.", 'bot');
+renderSchedule();
+renderResources();
+renderCourseProgress();
+renderDashboard();
+</script>
+</body>
+</html>

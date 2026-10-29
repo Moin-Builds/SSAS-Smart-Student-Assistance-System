@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up — SSAS | Smart Student Assistance System</title>
+  <meta name="description" content="Create your SSAS student account. Manage your schedule, resources, and academic performance.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="auth-body">
+
+  <div class="auth-logo">
+    <h1>🎓 SSAS</h1>
+    <p>Smart Student Assistance System</p>
+  </div>
+
+  <div class="auth-card" style="max-width:500px">
+    <h2>Create an Account</h2>
+    <p class="auth-subtitle">Join SSAS to manage your academic life</p>
+
+    <div id="signupAlert" class="alert error" style="display:none"></div>
+
+    <form id="signupForm" novalidate>
+      <div class="form-group">
+        <label for="signupName">Full Name</label>
+        <input type="text" id="signupName" placeholder="e.g. Moin Ahmed" autocomplete="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="signupEmail">Email Address</label>
+        <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input type="password" id="signupPassword" placeholder="Min. 8 characters" autocomplete="new-password" required>
+        </div>
+        <div class="form-group">
+          <label for="signupConfirm">Confirm Password</label>
+          <input type="password" id="signupConfirm" placeholder="Repeat password" autocomplete="new-password" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="signupProgram">Program</label>
+        <select id="signupProgram" required>
+          <option value="">— Select your program —</option>
+          <option value="BS Computer Science">BS Computer Science</option>
+          <option value="BS Software Engineering">BS Software Engineering</option>
+          <option value="BS Information Technology">BS Information Technology</option>
+          <option value="BS Artificial Intelligence">BS Artificial Intelligence</option>
+          <option value="BS Electrical Engineering">BS Electrical Engineering</option>
+          <option value="BS Mathematics">BS Mathematics</option>
+          <option value="BS Business Administration">BS Business Administration</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="signupSemester">Semester</label>
+        <select id="signupSemester" required>
+          <option value="">— Select semester —</option>
+          <option value="1">Semester 1</option>
+          <option value="2">Semester 2</option>
+          <option value="3">Semester 3</option>
+          <option value="4">Semester 4</option>
+          <option value="5">Semester 5</option>
+          <option value="6">Semester 6</option>
+          <option value="7">Semester 7</option>
+          <option value="8">Semester 8</option>
+        </select>
+      </div>
+
+      <div class="input-hint" style="margin-bottom:14px">
+        🔒 Your password is securely stored by Supabase Auth. We never store plain-text passwords.
+      </div>
+
+      <button type="submit" class="auth-btn" id="signupBtn">Create Account</button>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account? <a href="index.html">Login</a>
+    </div>
+  </div>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    redirectIfLoggedIn();
+    document.getElementById('signupForm').addEventListener('submit', handleSignup);
+  </script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSAS — Smart Student Assistance System</title>
+  <meta name="description" content="SSAS — Smart Student Assistance System. Dashboard, schedule, resources, and performance tracking for students.">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ===================== LOADING OVERLAY ===================== -->
+<div id="loadingOverlay">
+  <div class="overlay-spinner"></div>
+  <p>Loading…</p>
+</div>
+
+<!-- ===================== HEADER ===================== -->
+<header>
+  <h1>SSAS &nbsp;|&nbsp; Smart Student Assistance System</h1>
+  <div class="header-right">
+    <span class="header-subtitle">Prototype build &middot; First-Semester Student View</span>
+    <div id="headerUserInfo" class="user-info"></div>
+    <button class="btn-logout" id="logoutBtn" onclick="handleLogout()">Logout</button>
+  </div>
+</header>
+
+<!-- ===================== LAYOUT ===================== -->
+<div class="layout">
+
+  <!-- ---- Sidebar Navigation ---- -->
+  <nav>
+    <button class="navbtn active" data-view="dashboard">
+      <span class="nav-icon">📊</span> Dashboard
+    </button>
+    <button class="navbtn" data-view="schedule">
+      <span class="nav-icon">📅</span> Schedule
+    </button>
+    <button class="navbtn" data-view="resources">
+      <span class="nav-icon">📁</span> Resources
+    </button>
+    <button class="navbtn" data-view="chatbot">
+      <span class="nav-icon">🤖</span> AI Assistant
+    </button>
+    <button class="navbtn" data-view="performance">
+      <span class="nav-icon">📈</span> Performance
+    </button>
+    <div class="nav-divider"></div>
+    <button class="navbtn" data-view="profile">
+      <span class="nav-icon">👤</span> Profile
+    </button>
+  </nav>
+
+  <!-- ===================== MAIN CONTENT ===================== -->
+  <main>
+    <!-- Global alert for non-form errors -->
+    <div id="appAlert" class="alert" style="display:none"></div>
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <div class="view active" id="dashboard">
+      <h1 class="page-title">Dashboard</h1>
+      <div class="grid3">
+        <div class="card stat-card">
+          <div class="stat-label">Upcoming (7 days)</div>
+          <div class="stat" id="statUpcoming">—</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Study Hours (week)</div>
+          <div class="stat" id="statHours">—</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Assignments Done</div>
+          <div class="stat" id="statDone">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Upcoming Deadlines</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Course</th>
+              <th>Type</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="dashUpcomingBody">
+            <tr class="loading-row"><td colspan="4"><span class="spinner"></span> Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Quick Actions — Ask the AI Assistant</h2>
+        <div class="quickchip" onclick="goToChatWith('When is my next exam?')">📝 When is my next exam?</div>
+        <div class="quickchip" onclick="goToChatWith('What assignments are due this week?')">📋 Assignments due this week?</div>
+        <div class="quickchip" onclick="goToChatWith('I have 2 free hours today, suggest a study plan')">📚 Suggest a study plan (2 hrs)</div>
+        <div class="quickchip" onclick="goToChatWith('How many hours have I studied this week?')">⏱ My study hours this week?</div>
+      </div>
+    </div>
+
+    <!-- ==================== SCHEDULE MANAGEMENT ==================== -->
+    <div class="view" id="schedule">
+      <h1 class="page-title">Schedule Management</h1>
+      <div class="card">
+        <h2>Add Class / Assignment / Exam</h2>
+        <form class="inline" id="scheduleForm">
+          <input type="text" id="schTitle" placeholder="Title (e.g. DBMS Assignment 3)" required style="flex:2;min-width:160px">
+          <input type="text" id="schCourse" placeholder="Course (e.g. DBMS)" required style="min-width:110px">
+          <select id="schType" style="min-width:120px">
+            <option value="class">Class</option>
+            <option value="assignment">Assignment</option>
+            <option value="exam">Exam</option>
+          </select>
+          <input type="date" id="schDate" required style="min-width:140px">
+          <button class="btn" type="submit" id="scheduleAddBtn">+ Add</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>All Schedule Items</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Course</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleBody">
+            <tr class="loading-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== EDIT SCHEDULE MODAL ==================== -->
+    <div id="editScheduleModal" class="modal-overlay" style="display:none">
+      <div class="modal-card">
+        <h3>✏ Edit Schedule Item</h3>
+        <form id="editScheduleForm">
+          <input type="hidden" id="editSchId">
+          <div class="form-group">
+            <label for="editSchTitle">Title</label>
+            <input type="text" id="editSchTitle" required>
+          </div>
+          <div class="form-group">
+            <label for="editSchCourse">Course</label>
+            <input type="text" id="editSchCourse" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editSchType">Type</label>
+              <select id="editSchType">
+                <option value="class">Class</option>
+                <option value="assignment">Assignment</option>
+                <option value="exam">Exam</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="editSchDate">Date</label>
+              <input type="date" id="editSchDate" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="editSchStatus">Status</label>
+            <select id="editSchStatus">
+              <option value="pending">Pending</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn secondary" onclick="closeEditScheduleModal()">Cancel</button>
+            <button type="submit" class="btn" id="saveSchEditBtn">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+
+    <!-- ==================== RESOURCE MANAGEMENT ==================== -->
+    <div class="view" id="resources">
+      <h1 class="page-title">Resource Management</h1>
+      <div class="card">
+        <h2>Upload Study Resource</h2>
+        <div id="uploadStatus" class="alert" style="display:none"></div>
+        <form class="inline" id="resourceForm" style="flex-direction:column;align-items:flex-start;gap:12px">
+          <div style="display:flex;flex-wrap:wrap;gap:10px;width:100%">
+            <input type="text" id="resCourse" placeholder="Course (e.g. AI)" required style="min-width:150px;flex:1">
+            <input type="file" id="resFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" required style="flex:2;min-width:200px">
+            <button class="btn" type="submit" id="uploadBtn">⬆ Upload</button>
+          </div>
+          <p class="muted" style="margin:0">Supported: PDF, DOC, DOCX, PPT, PPTX, TXT — Max 20 MB. Files are securely stored in Supabase Storage.</p>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Study Resource Library</h2>
+        <div id="resourceList">
+          <div style="padding:16px;color:var(--muted)"><span class="spinner sm"></span> Loading resources…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== AI ASSISTANT / CHATBOT ==================== -->
+    <div class="view" id="chatbot">
+      <h1 class="page-title">AI Assistant</h1>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <h2 style="margin:0">AI Assistant</h2>
+          <span id="groqBadge" style="background:#eaf1fb;color:#2b5fa5;border:1px solid #bfd2ed;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600">⚡ SSAS AI</span>
+        </div>
+        <p class="muted" style="margin-bottom:12px">
+          Try: "When is my next exam?", "What's due this week?", "I have 3 free hours, suggest a study plan", "Log 2 hours of study for DBMS"
+        </p>
+        <div id="chatWindow"></div>
+        <div class="chatInputRow">
+          <input type="text" id="chatInput" placeholder="Type your question…" autocomplete="off">
+          <button class="btn" id="chatSendBtn">Send</button>
+        </div>
+        <div style="margin-top:10px">
+          <span class="quickchip" onclick="goToChatWith('When is my next exam?')">Next exam?</span>
+          <span class="quickchip" onclick="goToChatWith('What assignments are due this week?')">Due this week?</span>
+          <span class="quickchip" onclick="goToChatWith('I have 2 free hours, suggest a study plan')">Study plan (2h)</span>
+          <span class="quickchip" onclick="goToChatWith('Log 1 hour of study for DBMS')">Log study hours</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PERFORMANCE TRACKING ==================== -->
+    <div class="view" id="performance">
+      <h1 class="page-title">Performance Tracking</h1>
+      <div class="card">
+        <h2>Log Study Session</h2>
+        <form class="inline" id="logForm">
+          <input type="text" id="logCourse" placeholder="Course (e.g. DBMS)" style="min-width:150px">
+          <input type="number" id="logHours" placeholder="Hours studied" min="0.25" max="24" step="0.25" required style="min-width:130px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap">
+            <input type="checkbox" id="logCompleted"> Completed an assignment
+          </label>
+          <button class="btn" type="submit">+ Log</button>
+        </form>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>Weekly Study Hours</h2>
+          <div id="weeklyTotal" class="muted" style="margin-bottom:10px;font-size:13px"></div>
+          <canvas id="hoursChart" height="180"></canvas>
+        </div>
+        <div class="card">
+          <h2>Course-wise Progress</h2>
+          <p class="muted" style="font-size:12px;margin-bottom:10px">
+            Formula: Completed assignments ÷ Total assignments × 100
+          </p>
+          <div id="courseProgress">
+            <div style="padding:16px;color:var(--muted)"><span class="spinner sm"></span> Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PROFILE ==================== -->
+    <div class="view" id="profile">
+      <h1 class="page-title">My Profile</h1>
+      <div class="card">
+        <div id="profileDisplay"></div>
+      </div>
+
+      <div class="card">
+        <h2>Edit Profile</h2>
+        <div id="profileAlert" class="alert" style="display:none"></div>
+        <form id="profileForm">
+          <div class="form-group">
+            <label for="profileName">Full Name</label>
+            <input type="text" id="profileName" placeholder="Your full name" required style="max-width:360px;display:block">
+          </div>
+          <div class="form-group">
+            <label for="profileProgram">Program</label>
+            <select id="profileProgram" style="max-width:360px;display:block">
+              <option value="">— Select your program —</option>
+              <option value="BS Computer Science">BS Computer Science</option>
+              <option value="BS Software Engineering">BS Software Engineering</option>
+              <option value="BS Information Technology">BS Information Technology</option>
+              <option value="BS Artificial Intelligence">BS Artificial Intelligence</option>
+              <option value="BS Electrical Engineering">BS Electrical Engineering</option>
+              <option value="BS Mathematics">BS Mathematics</option>
+              <option value="BS Business Administration">BS Business Administration</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="profileSemester">Semester</label>
+            <select id="profileSemester" style="max-width:200px;display:block">
+              <option value="">— Semester —</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <p id="profileEmailDisplay" style="color:var(--muted);font-size:13.5px;margin:4px 0">—</p>
+            <p class="input-hint">Email cannot be changed here. Contact support if needed.</p>
+          </div>
+          <button class="btn" type="submit">Save Changes</button>
+        </form>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-client.js?v=3.0"></script>
+<script src="js/auth.js?v=3.0"></script>
+<script src="js/app.js?v=3.0"></script>
+<script src="js/assistant.js?v=3.0"></script>
+<script>
+  /* ---- Boot sequence ---- */
+  (async () => {
+    await initApp();
+
+    // Wire up forms now that currentUser is available
+    document.getElementById('scheduleForm').addEventListener('submit', addScheduleItem);
+    document.getElementById('editScheduleForm').addEventListener('submit', handleEditScheduleSubmit);
+    document.getElementById('resourceForm').addEventListener('submit', uploadResource);
+
+    document.getElementById('logForm').addEventListener('submit', logStudySession);
+    document.getElementById('profileForm').addEventListener('submit', handleProfileUpdate);
+
+    // Profile email display
+    const emailEl = document.getElementById('profileEmailDisplay');
+    if (emailEl && currentUser) emailEl.textContent = currentUser.email;
+
+    // Init chatbot greeting
+    initChatbot();
+  })();
+</script>
+</body>
+</html>
