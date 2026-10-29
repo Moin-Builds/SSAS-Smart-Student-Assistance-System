@@ -18,7 +18,9 @@ function hideOverlay() {
 function showAuthAlert(elId, msg, type = 'error') {
   const el = document.getElementById(elId);
   if (!el) return;
-  el.innerHTML = `<span>${type === 'error' ? '⚠' : '✓'}</span> ${msg}`;
+  const icon = document.createElement('span');
+  icon.textContent = type === 'error' ? '⚠' : '✓';
+  el.replaceChildren(icon, document.createTextNode(` ${msg}`));
   el.className = `alert ${type}`;
   el.style.display = 'flex';
 }
@@ -124,6 +126,91 @@ async function handleLogin(e) {
     btn.disabled = false;
     btn.textContent = 'Login';
     showAuthAlert('loginAlert', friendlyAuthError(err.message));
+  }
+}
+
+/* =========================================================
+   PASSWORD RECOVERY
+   ========================================================= */
+async function handlePasswordResetRequest(e) {
+  e.preventDefault();
+  clearAuthAlert('forgotPasswordAlert');
+
+  const email = document.getElementById('resetEmail').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return showAuthAlert('forgotPasswordAlert', 'Please enter a valid email address.');
+  }
+
+  const btn = document.getElementById('resetEmailBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner white sm"></span> Sending link…';
+
+  try {
+    const redirectTo = new URL('reset-password.html', window.location.href).href;
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+
+    showAuthAlert(
+      'forgotPasswordAlert',
+      'If an account exists for that email, a password reset link has been sent. Check your inbox and spam folder.',
+      'success'
+    );
+    btn.textContent = 'Send Reset Link';
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+    showAuthAlert('forgotPasswordAlert', friendlyAuthError(err.message));
+  }
+}
+
+async function initializePasswordReset() {
+  const status = document.getElementById('resetLinkStatus');
+  const form = document.getElementById('passwordResetForm');
+  try {
+    const { data: { session }, error } = await db.auth.getSession();
+    if (error) throw error;
+    if (!session) {
+      showAuthAlert(
+        'resetLinkStatus',
+        'This password reset link is invalid or has expired. Request a new link to continue.'
+      );
+      return;
+    }
+
+    status.style.display = 'none';
+    form.hidden = false;
+  } catch (err) {
+    showAuthAlert('resetLinkStatus', friendlyAuthError(err.message));
+  }
+}
+
+async function handlePasswordUpdate(e) {
+  e.preventDefault();
+  clearAuthAlert('passwordResetAlert');
+
+  const password = document.getElementById('newPassword').value;
+  const confirm = document.getElementById('confirmNewPassword').value;
+  if (password.length < 8) {
+    return showAuthAlert('passwordResetAlert', 'Password must be at least 8 characters long.');
+  }
+  if (password !== confirm) {
+    return showAuthAlert('passwordResetAlert', 'Passwords do not match.');
+  }
+
+  const btn = document.getElementById('updatePasswordBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner white sm"></span> Updating password…';
+
+  try {
+    const { error } = await db.auth.updateUser({ password });
+    if (error) throw error;
+
+    showAuthAlert('passwordResetAlert', 'Your password has been updated. Redirecting to your account…', 'success');
+    setTimeout(() => { window.location.href = 'app.html'; }, 1200);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Update Password';
+    showAuthAlert('passwordResetAlert', friendlyAuthError(err.message));
   }
 }
 

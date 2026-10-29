@@ -51,6 +51,8 @@ Supabase
 221327-Assig#3/
 ├── index.html              ← Login page (entry point)
 ├── signup.html             ← New user registration
+├── forgot-password.html    ← Request an account recovery email
+├── reset-password.html     ← Set a new password from the email link
 ├── app.html                ← Main protected application
 ├── css/
 │   └── styles.css          ← All styles (SSAS blue design)
@@ -135,6 +137,7 @@ Storage policies ensure each student can only access their own folder.
 Supabase Auth is used for all authentication.
 
 - Passwords are hashed by Supabase — never stored in the `profiles` table
+- Password recovery sends a one-time Supabase email link to `reset-password.html`
 - Sessions are persistent (survive page refreshes)
 - Session guard on `app.html` redirects unauthenticated users to `index.html`
 

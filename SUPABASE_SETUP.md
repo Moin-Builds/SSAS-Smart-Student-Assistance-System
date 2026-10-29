@@ -117,6 +117,11 @@ If they are missing, run just the Storage Policy section from `supabase_schema.s
 4. (Optional) Under **Authentication** → **Settings**, you can disable "Confirm email" during testing so users don't need to verify their email before logging in:
    - Toggle **"Enable email confirmations"** to OFF
    - This makes testing easier. Re-enable before going live.
+5. Under **Authentication** → **URL Configuration**, add the local recovery callback URLs to **Redirect URLs**:
+   - `http://127.0.0.1:5500/reset-password.html`
+   - `http://localhost:5500/reset-password.html` (if you open the site using `localhost`)
+6. When deploying, add your deployed site's `reset-password.html` URL to **Redirect URLs** too. Supabase only redirects recovery links to URLs on this allow list.
+7. Make sure the email provider is configured to deliver messages. During testing, check the spam folder as well as the inbox.
 
 ---
 

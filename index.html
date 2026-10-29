@@ -18,7 +18,7 @@
     <h2>Welcome back</h2>
     <p class="auth-subtitle">Sign in to your student account</p>
 
-    <div id="loginAlert" class="alert error" style="display:none"></div>
+    <div id="loginAlert" class="alert error" style="display:none" role="status" aria-live="polite"></div>
 
     <form id="loginForm" novalidate>
       <div class="form-group">
@@ -28,6 +28,7 @@
       <div class="form-group">
         <label for="loginPassword">Password</label>
         <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" required>
+        <a class="forgot-password-link" href="forgot-password.html">Forgot password?</a>
       </div>
 
       <button type="submit" class="auth-btn" id="loginBtn">Login</button>

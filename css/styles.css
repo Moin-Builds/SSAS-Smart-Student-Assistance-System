@@ -477,6 +477,8 @@ button.btn.sm { padding: 5px 10px; font-size: 12px; }
 .auth-logo p  { font-size: 13px; opacity: .8; margin-top: 4px; }
 
 .auth-card {
+  flex: 0 0 auto;
+  overflow: visible;
   background: white;
   border-radius: 16px;
   padding: 36px 40px;
@@ -531,6 +533,17 @@ button.btn.sm { padding: 5px 10px; font-size: 12px; }
 }
 .auth-btn:hover { background: var(--primary-dark); box-shadow: 0 4px 14px rgba(43,95,165,.35); }
 .auth-btn:disabled { opacity: .65; cursor: not-allowed; }
+
+.forgot-password-link {
+  display: block;
+  width: fit-content;
+  margin: 8px 0 0 auto;
+  color: var(--primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.forgot-password-link:hover { text-decoration: underline; }
 
 .auth-footer {
   text-align: center;
