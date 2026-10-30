@@ -37,6 +37,9 @@
     <button class="navbtn" data-view="schedule">
       <span class="nav-icon">📅</span> Schedule
     </button>
+    <button class="navbtn" data-view="reminders">
+      <span class="nav-icon">🔔</span> Reminders
+    </button>
     <button class="navbtn" data-view="resources">
       <span class="nav-icon">📁</span> Resources
     </button>
@@ -93,6 +96,13 @@
       </div>
 
       <div class="card">
+        <h2>Upcoming Reminders</h2>
+        <div id="dashboardReminders" class="reminder-list">
+          <p class="muted">Loading reminders…</p>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>Quick Actions — Ask the AI Assistant</h2>
         <div class="quickchip" onclick="goToChatWith('When is my next exam?')">📝 When is my next exam?</div>
         <div class="quickchip" onclick="goToChatWith('What assignments are due this week?')">📋 Assignments due this week?</div>
@@ -115,6 +125,8 @@
             <option value="exam">Exam</option>
           </select>
           <input type="date" id="schDate" required style="min-width:140px">
+          <label class="inline-time-label" for="schTime">Due time</label>
+          <input type="time" id="schTime" title="If omitted, the deadline is 11:59 p.m. in your reminder time zone" style="min-width:125px">
           <button class="btn" type="submit" id="scheduleAddBtn">+ Add</button>
         </form>
       </div>
@@ -128,12 +140,13 @@
               <th>Course</th>
               <th>Type</th>
               <th>Date</th>
+              <th>Due time</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="scheduleBody">
-            <tr class="loading-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>
+            <tr class="loading-row"><td colspan="7"><span class="spinner"></span> Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -166,6 +179,10 @@
               <label for="editSchDate">Date</label>
               <input type="date" id="editSchDate" required>
             </div>
+            <div class="form-group">
+              <label for="editSchTime">Due time (optional)</label>
+              <input type="time" id="editSchTime">
+            </div>
           </div>
           <div class="form-group">
             <label for="editSchStatus">Status</label>
@@ -180,6 +197,46 @@
             <button type="submit" class="btn" id="saveSchEditBtn">Save Changes</button>
           </div>
         </form>
+      </div>
+    </div>
+
+
+    <!-- ==================== REMINDERS ==================== -->
+    <div class="view" id="reminders">
+      <h1 class="page-title">Assignment &amp; Exam Reminders</h1>
+      <div class="card">
+        <h2>Reminder Preferences</h2>
+        <div id="reminderPreferencesAlert" class="alert" style="display:none"></div>
+        <form id="reminderPreferencesForm">
+          <div class="form-group">
+            <label for="reminderTimezone">Time zone</label>
+            <input id="reminderTimezone" type="text" required autocomplete="off">
+            <p class="input-hint">Use an IANA time zone such as America/New_York. Your browser's time zone is suggested automatically.</p>
+          </div>
+          <div class="form-group">
+            <label>Remind me before deadlines</label>
+            <div class="reminder-options">
+              <label><input type="checkbox" id="reminder72h" value="72"> 72 hours</label>
+              <label><input type="checkbox" id="reminder24h" value="24"> 24 hours</label>
+              <label><input type="checkbox" id="reminder1h" value="1"> 1 hour</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Delivery</label>
+            <div class="reminder-options">
+              <label><input type="checkbox" id="reminderInApp"> In-app notifications</label>
+              <label><input type="checkbox" id="reminderEmail"> Email (requires verified administrator setup)</label>
+            </div>
+            <p class="input-hint">Email is not sent unless the administrator configures Resend and verifies the sender domain.</p>
+          </div>
+          <button class="btn" type="submit" id="saveReminderPreferencesBtn">Save Preferences</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Notifications</h2>
+        <div id="reminderNotifications" class="reminder-list">
+          <p class="muted">Loading reminders…</p>
+        </div>
       </div>
     </div>
 
@@ -328,6 +385,7 @@
 <script src="js/auth.js?v=3.0"></script>
 <script src="js/app.js?v=3.0"></script>
 <script src="js/assistant.js?v=3.0"></script>
+<script src="js/reminders.js?v=1.0"></script>
 <script>
   /* ---- Boot sequence ---- */
   (async () => {
@@ -340,6 +398,7 @@
 
     document.getElementById('logForm').addEventListener('submit', logStudySession);
     document.getElementById('profileForm').addEventListener('submit', handleProfileUpdate);
+    document.getElementById('reminderPreferencesForm').addEventListener('submit', saveReminderPreferences);
 
     // Profile email display
     const emailEl = document.getElementById('profileEmailDisplay');

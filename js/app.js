@@ -75,6 +75,7 @@ function setupNavigation() {
       switch (btn.dataset.view) {
         case 'dashboard':   await loadDashboard();   break;
         case 'schedule':    await loadSchedule();    break;
+        case 'reminders':   await loadReminderView(); break;
         case 'resources':   await loadResources();   break;
         case 'performance': await loadPerformance(); break;
         case 'profile':     renderProfileView();     break;
@@ -153,6 +154,7 @@ async function loadDashboard() {
       </tr>
     `).join('');
   }
+  await loadReminderNotifications('dashboardReminders', true);
 }
 
 function setEl(id, val) {
@@ -165,7 +167,7 @@ function setEl(id, val) {
    ========================================================= */
 async function loadSchedule() {
   const tbody = document.getElementById('scheduleBody');
-  tbody.innerHTML = '<tr class="loading-row"><td colspan="6"><span class="spinner"></span> Loading…</td></tr>';
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="7"><span class="spinner"></span> Loading…</td></tr>';
 
   const { data, error } = await db
     .from('schedule_items')
@@ -174,7 +176,7 @@ async function loadSchedule() {
     .order('date', { ascending: true });
 
   if (error) {
-    tbody.innerHTML = '<tr><td colspan="6" class="muted">Failed to load schedule. Please refresh.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="muted">Failed to load schedule. Please refresh.</td></tr>';
     return;
   }
   currentScheduleItems = data || [];
@@ -184,7 +186,7 @@ async function loadSchedule() {
 function renderScheduleTable(items) {
   const tbody = document.getElementById('scheduleBody');
   if (!items || items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6">
+    tbody.innerHTML = `<tr><td colspan="7">
       <div class="empty-state">
         <div class="empty-icon">📅</div>
         <div class="empty-title">No schedule items yet</div>
@@ -199,6 +201,7 @@ function renderScheduleTable(items) {
       <td>${escHtml(s.course)}</td>
       <td><span class="badge ${s.type}">${capitalize(s.type)}</span></td>
       <td>${s.date}</td>
+      <td>${s.due_time ? escHtml(s.due_time.slice(0, 5)) : '11:59 p.m.'}</td>
       <td><span class="badge ${s.status}">${capitalize(s.status)}</span></td>
       <td style="white-space:nowrap">
         <button class="btn secondary sm" onclick="openEditScheduleModal('${s.id}')">✏ Edit</button>
@@ -218,6 +221,7 @@ function openEditScheduleModal(itemId) {
   setInputVal('editSchCourse', item.course);
   setInputVal('editSchType', item.type);
   setInputVal('editSchDate', item.date);
+  setInputVal('editSchTime', item.due_time || '');
   setInputVal('editSchStatus', item.status);
 
   const modal = document.getElementById('editScheduleModal');
@@ -236,6 +240,7 @@ async function handleEditScheduleSubmit(e) {
   const course = document.getElementById('editSchCourse').value.trim();
   const type   = document.getElementById('editSchType').value;
   const date   = document.getElementById('editSchDate').value;
+  const dueTime = document.getElementById('editSchTime').value || null;
   const status = document.getElementById('editSchStatus').value;
 
   if (!id || !title || !course || !date) return;
@@ -248,7 +253,7 @@ async function handleEditScheduleSubmit(e) {
 
   const { error } = await db
     .from('schedule_items')
-    .update({ title, course, type, date, status })
+    .update({ title, course, type, date, due_time: dueTime, status })
     .eq('id', id)
     .eq('student_id', currentUser.id);
 
@@ -274,6 +279,7 @@ async function addScheduleItem(e) {
   const course = document.getElementById('schCourse').value.trim();
   const type   = document.getElementById('schType').value;
   const date   = document.getElementById('schDate').value;
+  const dueTime = document.getElementById('schTime').value || null;
 
   if (!title || !course || !date) return;
 
@@ -282,7 +288,7 @@ async function addScheduleItem(e) {
 
   const { data, error } = await db.from('schedule_items').insert({
     student_id: currentUser.id,
-    title, course, type, date,
+    title, course, type, date, due_time: dueTime,
     status: 'pending'
   }).select();
 

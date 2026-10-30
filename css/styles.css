@@ -599,4 +599,71 @@ button.btn.sm { padding: 5px 10px; font-size: 12px; }
   nav { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding: 6px 0; display: flex; overflow-x: auto; }
   nav button.navbtn { white-space: nowrap; border-right: none; border-bottom: 3px solid transparent; padding: 8px 14px; }
   nav button.navbtn.active { border-right-color: transparent; border-bottom-color: var(--primary); }
+  .reminder-item { align-items: flex-start; }
 }
+
+/* =========================================================
+   ASSIGNMENT & EXAM REMINDERS
+   ========================================================= */
+.inline-time-label {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.reminder-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+}
+
+.reminder-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.reminder-options input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.reminder-list {
+  display: grid;
+  gap: 10px;
+}
+
+.reminder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.reminder-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.reminder-copy span,
+.reminder-email-error,
+.reminder-more {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.reminder-email-error {
+  color: #a33b2b;
+  margin: 2px 0 0;
+}
+
+.reminder-more { margin: 2px 0 0; }
