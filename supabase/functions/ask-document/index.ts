@@ -8,21 +8,20 @@
  *   3. Embed the student's question with gte-small
  *   4. Cosine similarity search via match_document_chunks() RPC
  *   5. Assemble retrieved chunks as context
- *   6. Call Groq LLM (llama-3.1-8b-instant) with grounded prompt
+ *   6. Call Gemini with a grounded prompt
  *   7. Return answer + source citations
  *
  * Security:
  *   - JWT verified; resource ownership confirmed before any data access
  *   - similarity search is scoped to student_id + resource_id (double-locked)
- *   - GROQ_API_KEY accessed only via Deno.env.get() — never exposed to client
+ *   - GEMINI_API_KEY accessed only via Deno.env.get() — never exposed to client
  *   - No service-role key used here (reads only, RLS handles isolation)
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const GROQ_API_URL   = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL     = 'llama-3.1-8b-instant';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 const TOP_K          = 5;       // number of chunks to retrieve
 const SIM_THRESHOLD  = 0.35;    // minimum cosine similarity (0 = unrelated, 1 = identical)
 const MAX_CTX_CHARS  = 3000;    // maximum context characters sent to the LLM
@@ -57,9 +56,10 @@ Deno.serve(async (req: Request) => {
 
     const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const GROQ_API_KEY      = Deno.env.get('GROQ_API_KEY')!;
+    const GEMINI_API_KEY    = Deno.env.get('GEMINI_API_KEY');
+    const GEMINI_MODEL      = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash-lite';
 
-    if (!GROQ_API_KEY) return error(500, 'Groq API key is not configured on the server');
+    if (!GEMINI_API_KEY) return error(503, 'Gemini API key is not configured on the server');
 
     // User-scoped client (RLS enforced on all reads)
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ── 7. Call Groq LLM ────────────────────────────────────────────────
+    // ── 7. Call Gemini ──────────────────────────────────────────────────
     const systemPrompt = `You are an academic study assistant helping a student understand their own uploaded course notes and documents. 
 Answer ONLY based on the document context provided below. 
 If the answer is not in the context, say clearly: "I cannot find that information in this document."
@@ -156,34 +156,50 @@ Student's question: ${cleanQuestion}
 
 Answer based only on the document content above:`;
 
-    const groqRes = await fetch(GROQ_API_URL, {
-      method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type':  'application/json',
+    const geminiRes = await fetch(
+      `${GEMINI_API_URL}/${encodeURIComponent(GEMINI_MODEL)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'x-goog-api-key': GEMINI_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 600 },
+        }),
       },
-      body: JSON.stringify({
-        model:       GROQ_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user',   content: userPrompt   },
-        ],
-        temperature: 0.2,   // low temp = factual, grounded answers
-        max_tokens:  600,
-      }),
-    });
+    );
 
-    if (!groqRes.ok) {
-      const groqErr = await groqRes.text();
-      console.error('Groq API error:', groqErr);
-      return error(502, 'LLM request failed. Please try again.');
+    if (geminiRes.status === 401 || geminiRes.status === 403) {
+      return error(503, 'Gemini API key was rejected. Check the server-side GEMINI_API_KEY.');
+    }
+    if (geminiRes.status === 400) {
+      const providerError = await geminiRes.json().catch(() => null);
+      const providerMessage = providerError?.error?.message?.toLowerCase() ?? '';
+      if (providerMessage.includes('api key') &&
+          ['invalid', 'not valid', 'expired'].some((phrase) => providerMessage.includes(phrase))) {
+        return error(503, 'Gemini API key was rejected. Check the server-side GEMINI_API_KEY.');
+      }
+    }
+    if (geminiRes.status === 429) {
+      return error(429, 'Gemini quota limit reached. Wait and try again, or check Google AI Studio usage limits.');
+    }
+    if (!geminiRes.ok) {
+      console.error('Gemini API request failed with status:', geminiRes.status);
+      return error(502, 'Gemini request failed. Please try again.');
     }
 
-    const groqData = await groqRes.json() as {
-      choices: Array<{ message: { content: string } }>;
+    const geminiData = await geminiRes.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
-
-    const answer = groqData.choices?.[0]?.message?.content?.trim() ?? 'No answer generated.';
+    const answer = geminiData.candidates
+      ?.flatMap((candidate) => candidate.content?.parts ?? [])
+      .map((part) => part.text ?? '')
+      .join('')
+      .trim();
+    if (!answer) return error(502, 'Gemini returned no answer. Please rephrase your question and try again.');
 
     // ── 8. Return result ─────────────────────────────────────────────────
     return new Response(

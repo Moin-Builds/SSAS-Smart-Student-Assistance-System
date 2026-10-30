@@ -56,6 +56,9 @@ CREATE TABLE IF NOT EXISTS public.study_attempts (
     REFERENCES public.study_sets(id, student_id) ON DELETE CASCADE
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_study_attempts_id_student
+  ON public.study_attempts(id, student_id);
+
 CREATE TABLE IF NOT EXISTS public.study_responses (
   id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   attempt_id   UUID NOT NULL,

@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = Field(..., description="Supabase service role key (backend only)")
     SUPABASE_JWT_SECRET: Optional[str] = Field(None, description="Supabase Auth JWT secret (optional if using client verification)")
 
-    # Groq API configuration
-    GROQ_API_KEY: str = Field(..., description="Groq API key for LLM generation")
-    GROQ_MODEL: str = Field("llama-3.1-8b-instant", description="Groq model name")
+    # Gemini API configuration. The backend remains startable until a key is provided.
+    GEMINI_API_KEY: str = Field("", description="Gemini API key for LLM generation")
+    GEMINI_MODEL: str = Field("gemini-3.5-flash-lite", description="Gemini model name")
 
     # Embedding configuration
     EMBEDDING_MODEL_NAME: str = Field("all-MiniLM-L6-v2", description="SentenceTransformers model")

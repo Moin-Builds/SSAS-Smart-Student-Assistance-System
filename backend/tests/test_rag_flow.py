@@ -2,7 +2,7 @@
 Tests for Grounded Q&A generation and Insufficient Evidence detection.
 """
 
-from backend.app.groq_service import (
+from backend.app.rag_service import (
     generate_rag_answer,
     INSUFFICIENT_EVIDENCE_MESSAGE
 )
@@ -30,7 +30,7 @@ def test_citation_formatting():
         }
     ]
 
-    # Mock groq client call or test structure
+    # Citation fields are derived from retrieved document chunks.
     citations = []
     for chunk in mock_chunks:
         citations.append({

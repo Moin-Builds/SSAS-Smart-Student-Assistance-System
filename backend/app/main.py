@@ -5,11 +5,11 @@ Provides authenticated document processing (RAG indexing) and grounded question-
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from groq import AuthenticationError
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Literal
 
 from backend.app.config import settings
+from backend.app.gemini_service import GeminiAPIError
 from backend.app.auth import get_current_student, supabase_admin
 from backend.app.pdf_processor import (
     extract_text_from_file,
@@ -26,7 +26,7 @@ from backend.app.vector_store import (
     save_chunks_with_embeddings,
     search_similar_chunks
 )
-from backend.app.groq_service import generate_rag_answer
+from backend.app.rag_service import generate_rag_answer
 from backend.app import study_service
 
 app = FastAPI(
@@ -97,11 +97,14 @@ class FlashcardReviewRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
+    gemini_key = settings.GEMINI_API_KEY.strip()
     return {
         "status": "healthy",
         "service": "SSAS RAG Assistant Backend",
         "embedding_model": settings.EMBEDDING_MODEL_NAME,
-        "llm_model": settings.GROQ_MODEL
+        "llm_provider": "gemini",
+        "llm_model": settings.GEMINI_MODEL,
+        "llm_configured": bool(gemini_key and gemini_key != "your_gemini_api_key_here"),
     }
 
 
@@ -264,7 +267,7 @@ def ask_question(
         threshold=0.30
     )
 
-    # 3. Generate grounded answer via Groq LLM
+    # 3. Generate a grounded answer using the retrieved passages
     try:
         result = generate_rag_answer(
             question=question,
@@ -272,10 +275,10 @@ def ask_question(
             document_name=doc_name,
             chat_history=request.chat_history
         )
-    except AuthenticationError as e:
+    except GeminiAPIError as e:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Groq API key is invalid or expired. Update GROQ_API_KEY in backend/.env and restart the backend."
+            status_code=e.status_code,
+            detail=str(e),
         ) from e
 
     return AskQuestionResponse(

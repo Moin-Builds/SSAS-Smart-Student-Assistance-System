@@ -1,22 +1,11 @@
 """
-Groq LLM Service for Grounded Document Question Answering.
+LLM service for Grounded Document Question Answering.
 Generates factually grounded answers backed by retrieved context passages,
 with structured citations and honest insufficient-evidence fallback.
 """
 
 from typing import List, Dict, Any, Optional
-from groq import Groq
-from backend.app.config import settings
-
-_groq_client = None
-
-
-def get_groq_client() -> Groq:
-    """Lazy initialization of Groq client using server-side API key."""
-    global _groq_client
-    if _groq_client is None:
-        _groq_client = Groq(api_key=settings.GROQ_API_KEY)
-    return _groq_client
+from backend.app.gemini_service import generate_text
 
 
 INSUFFICIENT_EVIDENCE_MESSAGE = (
@@ -102,15 +91,7 @@ def generate_rag_answer(
 
     messages.append({"role": "user", "content": user_prompt})
 
-    client = get_groq_client()
-    completion = client.chat.completions.create(
-        model=settings.GROQ_MODEL,
-        messages=messages,
-        temperature=0.2,  # Low temperature for high factual accuracy
-        max_tokens=750
-    )
-
-    answer_text = completion.choices[0].message.content.strip()
+    answer_text = generate_text(messages, max_tokens=750)
 
     # Verify if model gave an insufficient evidence response
     has_evidence = INSUFFICIENT_EVIDENCE_MESSAGE.lower() not in answer_text.lower()

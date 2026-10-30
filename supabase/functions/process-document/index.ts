@@ -16,7 +16,7 @@
  *   - Student JWT verified via userClient.auth.getUser()
  *   - Resource ownership checked before any processing
  *   - Service-role key only used AFTER ownership is confirmed
- *   - GROQ_API_KEY not used here (embeddings are free via Supabase AI)
+ *   - No LLM API key is needed for document indexing
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';

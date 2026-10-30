@@ -286,7 +286,7 @@ def test_generation_uses_retrieved_passages_and_structured_json(monkeypatch):
         observed["max_tokens"] = max_tokens
         return build_content().model_dump_json()
 
-    monkeypatch.setattr(study_service, "_call_groq_json", fake_json_call)
+    monkeypatch.setattr(study_service, "_call_gemini_json", fake_json_call)
     request = study_service.StudyGenerationRequest(
         source_type="document",
         source_id="resource-a",
@@ -406,7 +406,7 @@ def test_course_retrieval_reuses_existing_embedding_and_vector_search(fake_db, m
 
 
 def test_short_answer_grader_rejects_malformed_json(monkeypatch):
-    monkeypatch.setattr(study_service, "_call_groq_json", lambda *_args, **_kwargs: '{"is_correct": true}')
+    monkeypatch.setattr(study_service, "_call_gemini_json", lambda *_args, **_kwargs: '{"is_correct": true}')
     with pytest.raises(HTTPException) as error:
         study_service._grade_short_answer(
             "Student response",

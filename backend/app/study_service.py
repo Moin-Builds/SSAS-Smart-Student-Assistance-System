@@ -6,12 +6,11 @@ from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
 from fastapi import HTTPException, status
-from groq import AuthenticationError
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError, field_validator, model_validator
 
 from backend.app.auth import supabase_admin
-from backend.app.config import settings
 from backend.app.embeddings import generate_embedding
+from backend.app.gemini_service import GeminiAPIError, generate_text
 from backend.app.vector_store import search_similar_chunks
 
 
@@ -240,35 +239,14 @@ def retrieve_study_sources(
     return source_map, context_parts
 
 
-def _call_groq_json(messages: list[dict[str, str]], max_tokens: int) -> str:
-    from backend.app.groq_service import get_groq_client
-
+def _call_gemini_json(messages: list[dict[str, str]], max_tokens: int) -> str:
     try:
-        completion = get_groq_client().chat.completions.create(
-            model=settings.GROQ_MODEL,
-            messages=messages,
-            temperature=0.2,
-            max_tokens=max_tokens,
-            response_format={"type": "json_object"},
-        )
-    except AuthenticationError as exc:
+        return generate_text(messages, max_tokens=max_tokens, json_mode=True)
+    except GeminiAPIError as exc:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="The Groq API key is invalid or expired. Update GROQ_API_KEY in backend/.env.",
+            status_code=exc.status_code,
+            detail=str(exc),
         ) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="The AI service could not generate study content. Please try again.",
-        ) from exc
-
-    content = completion.choices[0].message.content
-    if not content:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="The AI returned an empty response. Please try again.",
-        )
-    return content
 
 
 def generate_questions(
@@ -290,7 +268,7 @@ def generate_questions(
         f"{kind_instructions[request.kind]}\n\n"
         f"Source passages:\n{chr(10).join(context_parts)}"
     )
-    raw = _call_groq_json(
+    raw = _call_gemini_json(
         [
             {"role": "system", "content": "You generate accurate, source-grounded study material as valid JSON only."},
             {"role": "user", "content": prompt},
@@ -456,7 +434,7 @@ def resume_attempt(student_id: str, attempt_id: str) -> dict[str, Any]:
 
 
 def _grade_short_answer(answer: str, correct_answer: str, explanation: str, question: str) -> AnswerGrade:
-    raw = _call_groq_json(
+    raw = _call_gemini_json(
         [
             {
                 "role": "system",

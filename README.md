@@ -42,7 +42,7 @@ Supabase
  ├── Auth (login, signup, sessions)
  ├── PostgreSQL (schedule, resources, logs, chat)
  ├── Storage (uploaded study files)
- └── FastAPI RAG backend + Groq (document Q&A and study tools)
+ └── FastAPI RAG backend + Gemini (document Q&A and study tools)
 ```
 
 ---
@@ -171,6 +171,33 @@ npx serve .
 
 > ⚠️ Do NOT open HTML files directly with `file://` — Supabase Storage requires HTTP.
 
+## Free Portfolio Deployment
+
+The project can be published with GitHub Pages (static frontend), Render Free (FastAPI backend), and the existing Supabase Free project. This is a hobby/demo setup, not an uptime guarantee: Render Free services sleep after 15 minutes without traffic and can take about a minute to wake. The backend's local sentence-transformer model may exceed Render's 512 MB free memory limit; if it does, the service will restart or fail health checks and a reliably running backend requires a larger host. Supabase Free projects can pause after a week without activity. Provider free tiers and limits can change.
+
+### Deploy the backend to Render
+
+1. Rotate any Gemini key that was shared in chat, then create a replacement in Google AI Studio. Never put it in Git or frontend settings.
+2. In Render, choose **New → Blueprint**, connect this public repository, select the `portfolio-deploy` branch, and deploy using `render.yaml`.
+3. Enter these values when prompted, or set them under the backend service's **Environment** page:
+   - `SUPABASE_URL`: the Supabase project URL.
+   - `SUPABASE_ANON_KEY`: the Supabase publishable/anon key.
+   - `SUPABASE_SERVICE_ROLE_KEY`: the Supabase service-role/secret key. Keep it backend-only.
+   - `GEMINI_API_KEY`: the replacement Gemini API key.
+4. Wait for the service deploy. Check `https://YOUR-SERVICE.onrender.com/health`; it should return `"status":"healthy"` and `"llm_configured":true`. This checks configuration, not Gemini key validity; a real AI request is the live provider check.
+
+### Deploy the frontend to GitHub Pages
+
+1. In GitHub, open this repository's **Settings → Pages** and select **GitHub Actions** as the build and deployment source.
+2. Under **Settings → Secrets and variables → Actions → Variables**, add:
+   - Name: `AI_BACKEND_URL`
+   - Value: your backend's public Render URL, for example `https://YOUR-SERVICE.onrender.com` (no trailing slash).
+3. Push the deployment changes to `main` or `portfolio-deploy`, or run **Actions → Deploy SSAS frontend → Run workflow** from the branch containing the deployment files. The workflow publishes the frontend to `https://moin-builds.github.io/SSAS-Smart-Student-Assistance-System/`.
+4. In Supabase **Authentication → URL Configuration**, set the Site URL to that Pages URL and add it to the allowed redirect URLs. Also verify the app's existing database, RAG, and study-tools migrations have been applied and that the `student-resources` bucket and its owner-only policies exist.
+5. Test login/signup, resource upload and indexing, document Q&A, quiz generation/history, quiz answers, and flashcards from the public URL. A sleeping free backend may need its first request retried after it wakes.
+
+The quiz and saved-history features require the FastAPI backend. Document Q&A can fall back to the Supabase `ask-document` Edge Function when FastAPI is unreachable; that function must be separately deployed and have `GEMINI_API_KEY` set in **Edge Functions → Secrets**. Edge Function secrets are separate from Render environment variables. Do not configure or expose the Supabase service-role key in the frontend.
+
 ## AI Quiz and Flashcard Generator
 
 The **Quizzes & Flashcards** tab in the AI Assistant generates MCQs, short-answer quizzes, and flashcards from indexed documents or all indexed documents for a selected course. Questions are generated from the existing RAG/pgvector retrieval results and include source references. Quiz answers and explanations are kept server-side until each answer is submitted.
@@ -178,7 +205,8 @@ The **Quizzes & Flashcards** tab in the AI Assistant generates MCQs, short-answe
 ### Setup
 
 1. Apply `supabase_schema.sql`, then `rag_migration.sql`, then `rag_study_tools_migration.sql` in the Supabase SQL Editor.
-2. Configure `backend/.env` using `backend/.env.example`. The backend needs the Supabase URL, anon key, service-role key, and a valid Groq API key. Keep this file private and never put the service-role or Groq key in frontend code.
+2. Configure `backend/.env` using `backend/.env.example`. The backend needs the Supabase URL, anon key, service-role key, and a Gemini API key created in [Google AI Studio](https://aistudio.google.com/apikey). Set `GEMINI_API_KEY` and `GEMINI_MODEL` in the private backend `.env` file, then restart the backend. Keep this file private and never put the service-role or Gemini key in frontend code. Gemini free-tier quotas and data-use terms apply; check Google's current [pricing and limits](https://ai.google.dev/gemini-api/docs/pricing) before use.
+   The frontend also falls back to the `ask-document` Supabase Edge Function when FastAPI is offline. To enable that fallback, set the Edge Function secrets `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`) in Supabase and deploy `ask-document`; do not store the key in frontend files.
 3. Ensure the selected document(s) show as indexed in Ask My Notes.
 4. Start the frontend using the local server instructions above.
 5. From the project root, start the API with:
