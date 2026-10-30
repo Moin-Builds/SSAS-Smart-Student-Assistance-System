@@ -170,13 +170,15 @@ async function sendChat() {
   addTypingIndicator();
 
   const ctx = await getStudentContext();
-  const botReplyText = await smartFallbackReply(text, ctx);
+  // `let` required — botReplyText may be mutated below if a [LOG:...] tag is stripped
+  let botReplyText = await smartFallbackReply(text, ctx);
 
   // Execute inline log action tags if present
-  const logMatch = botReplyText.match(/\[LOG:([\d.]+):([A-Z0-9\s]+)\]/i);
-  if (logMatch) {
-    const hrs = parseFloat(logMatch[1]);
-    const course = logMatch[2].trim().toUpperCase();
+  // BUG FIX S2: was declared `const` but reassigned below — changed to `let`
+  let inlineLogMatch = botReplyText.match(/\[LOG:([\d.]+):([A-Z0-9\s]+)\]/i);
+  if (inlineLogMatch) {
+    const hrs = parseFloat(inlineLogMatch[1]);
+    const course = inlineLogMatch[2].trim().toUpperCase();
     const user = getActiveUser();
     const client = getActiveDb();
     if (hrs > 0 && user && client) {

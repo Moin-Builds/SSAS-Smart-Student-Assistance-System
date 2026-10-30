@@ -368,11 +368,14 @@ function renderResourceList(items) {
   }
   list.innerHTML = items.map(r => {
     const icon = fileIcon(r.file_name);
+    const indexBadge = r.is_indexed
+      ? `<span class="badge" style="background:#e6f4ea;color:#137333;font-size:11px;margin-left:6px" title="${r.chunk_count || 0} chunks indexed">AI Indexed (${r.chunk_count || 0})</span>`
+      : '';
     return `
       <div class="resource-item">
         <span class="file-icon">${icon}</span>
         <div class="resource-info">
-          <div class="resource-name">${escHtml(r.file_name)}</div>
+          <div class="resource-name">${escHtml(r.file_name)}${indexBadge}</div>
           <div class="resource-meta">${escHtml(r.course)} · ${r.upload_date}</div>
         </div>
         <div class="resource-actions">
@@ -457,19 +460,31 @@ async function uploadResource(e) {
     const fileUrl = urlData?.publicUrl || null;
 
     // 3. Insert metadata into resources table
-    const { error: dbErr } = await db.from('resources').insert({
+    const { data: insertedResource, error: dbErr } = await db.from('resources').insert({
       student_id:   currentUser.id,
       course,
       file_name:    file.name,
       storage_path: storagePath,
       file_url:     fileUrl,
       upload_date:  isoDate(today)
-    });
+    }).select('id').single();
     if (dbErr) throw dbErr;
 
     e.target.reset();
-    showResourceStatus('File uploaded successfully!', 'success');
+    showResourceStatus('File uploaded! Indexing document for AI search…', 'success');
     await loadResources();
+
+    // Trigger document indexing (process-document Edge Function) if available
+    if (typeof indexDocument === 'function' && insertedResource?.id) {
+      indexDocument(insertedResource.id).then(success => {
+        if (success) {
+          showResourceStatus('File uploaded and indexed for AI Ask My Notes!', 'success');
+          loadResources();
+        } else {
+          showResourceStatus('File uploaded. Note: Auto-indexing pending or requires manual retry.', 'info');
+        }
+      });
+    }
   } catch (err) {
     const msg = err.message?.includes('duplicate') ? 'A file with this name already exists.' : (err.message || 'Upload failed.');
     showResourceStatus(msg, 'error');

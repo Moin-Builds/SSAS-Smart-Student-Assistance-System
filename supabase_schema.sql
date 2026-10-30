@@ -1,27 +1,5 @@
--- ================================================================
--- SSAS — Smart Student Assistance System
--- Supabase PostgreSQL Schema v2.0
--- ================================================================
--- HOW TO USE:
---   1. Open your Supabase project dashboard
---   2. Go to SQL Editor → New Query
---   3. Paste this entire file and click Run
--- ================================================================
-
-
--- ================================================================
--- EXTENSIONS
--- ================================================================
--- uuid_generate_v4() is available via the pgcrypto / uuid-ossp extension
--- Supabase enables this by default
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-
--- ================================================================
--- TABLE: profiles
--- One row per authenticated user.
--- Linked to auth.users.id (Supabase Auth).
--- ================================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
   id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name    TEXT NOT NULL DEFAULT '',
